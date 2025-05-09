@@ -1,35 +1,34 @@
 from flask import Flask, jsonify, request
-from flask_cors import CORS
+import json
 
 app = Flask(__name__)
-CORS(app)  # Allow requests from Vite dev server (localhost:5173)
 
-# Dummy config for frontend buttons
-@app.route("/api/config", methods=["GET"])
+# Temporary in-memory storage for button config
+config_file = 'config.json'
+
+# Load config from file (if exists)
+def load_config():
+    try:
+        with open(config_file, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return []
+
+# Save config to file
+def save_config(buttons):
+    with open(config_file, 'w') as f:
+        json.dump(buttons, f)
+
+@app.route('/api/config', methods=['GET'])
 def get_config():
-    return jsonify([
-        {"label": "Highlight Frameworks", "url": "/api/highlight/frameworks"},
-        {"label": "Highlight Languages", "url": "/api/highlight/languages"}
-    ])
+    buttons = load_config()
+    return jsonify(buttons)
 
-# Dummy endpoint for "frameworks"
-@app.route("/api/highlight/frameworks", methods=["POST"])
-def highlight_frameworks():
-    text = request.json.get("text", "")
-    return jsonify({
-        "Flask": "framework",
-        "Vue.js": "framework"
-    })
+@app.route('/api/config', methods=['POST'])
+def update_config():
+    data = request.get_json()
+    save_config(data)
+    return jsonify({"success": True})
 
-# Dummy endpoint for "languages"
-@app.route("/api/highlight/languages", methods=["POST"])
-def highlight_languages():
-    text = request.json.get("text", "")
-    return jsonify({
-        "Python": "language",
-        "JavaScript": "language"
-    })
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run(debug=True)
-

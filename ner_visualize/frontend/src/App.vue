@@ -1,10 +1,16 @@
 <template>
   <div class="min-h-screen bg-gray-50 text-gray-900 p-4 font-sans">
     <h1 class="text-2xl font-bold mb-4">Entity Annotator</h1>
-    <p class="mb-4">{{ text }}</p> <!-- Display the text -->
-    
+
+    <router-link to="/config">
+      <button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+        Go to Config Page
+      </button>
+    </router-link>
+
+    <router-view></router-view>
+
     <div class="mt-6 flex gap-2 flex-wrap">
-      <!-- Render buttons dynamically from the backend -->
       <button
         v-for="button in buttons"
         :key="button.label"
@@ -40,7 +46,6 @@ async function handleClick(button) {
   })
   const entities = await response.json()
   console.log(entities)  // Display the entities in the console
-  // Here we will process and highlight the text based on the entities (we'll do this next)
 }
 </script>
 
