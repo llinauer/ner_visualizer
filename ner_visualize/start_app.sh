@@ -1,6 +1,8 @@
 #!/bin/bash
 
-cd $(git rev-parse --show-toplevel)
+set -eu
+
+cd $(git rev-parse --show-toplevel)/ner_visualize
 
 tmux new-session -s ner_vis -n backend -c backend -d
 tmux send-keys -t backend "./run_app.sh" C-m
