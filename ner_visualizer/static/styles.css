@@ -11,36 +11,84 @@
     max-width: 250px; /* Set a max-width for the legend box */
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow for visual depth */
     z-index: 10;
-  }
-  
-  .legend-item {
+    overflow: hidden; /* Hide anything that overflows */
+}
+
+.legend-item {
     display: flex;
     align-items: center;
     margin-bottom: 12px;
-  }
-  
-  .legend-item:last-child {
+}
+
+.legend-item:last-child {
     margin-bottom: 0;
-  }
-  
-  .legend-item div {
+}
+
+.legend-item div {
     width: 16px;
     height: 16px;
     border-radius: 50%;
     margin-right: 8px;
-  }
-  
-  .legend-item span {
+}
+
+.legend-item span {
     font-size: 14px;
     font-weight: 600;
     color: #333;
-  }
-  
-  .grid-cols-2 {
-    grid-template-columns: 1fr 1fr;
-  }
-  
-  .grid-cols-3 {
-    grid-template-columns: 1fr 1fr 1fr;
-  }
-  
+}
+
+/* Add grid styles for columns */
+.legend-container .grid {
+    display: grid;
+    grid-template-columns: 1fr; /* Ensure 1 column by default */
+    gap: 8px;
+}
+
+/* For 2 columns (override if necessary) */
+.grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr); /* Two equal columns */
+}
+
+/* For 3 columns (override if necessary) */
+.grid-cols-3 {
+    grid-template-columns: repeat(3, 1fr); /* Three equal columns */
+}
+
+/* Allow wrapping of items within grid */
+@media screen and (max-width: 640px) {
+    .grid-cols-2, .grid-cols-3 {
+        grid-template-columns: 1fr; /* Stack items in a single column on small screens */
+    }
+}
+
+/* Tooltip Styles */
+.highlight {
+    position: relative; /* To position the tooltip relative to the text */
+    cursor: pointer;
+}
+
+/* Tooltip box styles */
+.highlight::after {
+    content: attr(data-tooltip); /* The tooltip text */
+    position: absolute;
+    left: 80%; /* Position the tooltip to the right of the word */
+    top: 80%; /* Position it slightly below the word */
+    transform: translateY(8px); /* Add a small vertical offset below the word */
+    margin-left: 4px; /* Add some space between the word and the tooltip */
+    background-color: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    padding: 5px 10px;
+    font-size: 12px;
+    border-radius: 4px;
+    opacity: 0; /* Initially hidden */
+    visibility: hidden;
+    pointer-events: none; /* Prevent interaction with the tooltip itself */
+    transition: opacity 0.3s ease-in-out; /* Smooth fade-in */
+}
+
+/* Show the tooltip on hover */
+.highlight:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
