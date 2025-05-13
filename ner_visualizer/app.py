@@ -1,10 +1,27 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 from markupsafe import Markup
+from jinja2 import Environment
+import json
 import re
+import os
 
 app = Flask(__name__)
 
-configs = []
+CONFIG_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+
+# Function to load the config from a file
+def load_config():
+    if os.path.exists(CONFIG_FILE_PATH):
+        try:
+            with open(CONFIG_FILE_PATH, 'r') as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            print("Error decoding JSON from the config file.")
+            return []  # Return an empty list if there is an error decoding the JSON
+    else:
+        print("Config file not found.")
+        return [] 
+
 
 # Shared keyword data
 HIGHLIGHTS = {
@@ -75,24 +92,51 @@ def index():
 
         # Perform highlight
         highlighted_html = highlight_text(raw_text, strategy=action)
+    
+    config = load_config()
 
     return render_template(
         "index.html",
         raw_text=raw_text,
         highlighted_text=Markup(highlighted_html),
-        type_colors=type_color_map
+        type_colors=type_color_map,
+        configs=config
     )
+
+@app.route('/send-url', methods=['POST'])
+def send_url():
+    url = request.form['url']
+    # Do something with the URL, like process it or store it
+    return jsonify({'status': 'success', 'url': url})
 
 @app.route("/config", methods=["GET", "POST"])
 def config():
-    global configs
+    configs = load_config()  # Load current configs from the file
+    env = Environment()  # Create a Jinja2 environment
+
     if request.method == "POST":
-        # For now, we'll just save the text input as a new config
-        config_input = request.form.get("config_input")
-        if config_input:
-            configs.append(config_input)
-    
-    return render_template("config.html", configs=configs)
+        action = request.form.get("action")
+
+        if action == "add":
+            button_name = request.form.get("button_name")
+            url_input = request.form.get("url_input")
+            configs.append({"button_name": button_name, "url": url_input})
+            save_configs(configs)
+
+        elif action == "delete":
+            index = int(request.form.get("index"))
+            if 0 <= index < len(configs):
+                del configs[index]
+                save_configs(configs)
+
+        elif action == "update":
+            index = int(request.form.get("index"))
+            new_url = request.form.get("new_url")
+            if 0 <= index < len(configs):
+                configs[index]["url"] = new_url
+                save_configs(configs)
+
+    return render_template("config.html", configs=configs, enumerate=enumerate)
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -1,0 +1,11 @@
+[
+    {
+      "button_name": "NER model 1",
+      "url": "https://example1.com"
+    },
+    {
+      "button_name": "NER model 2",
+      "url": "https://example2.com"
+    }
+  ]
+  

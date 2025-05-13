@@ -17,27 +17,79 @@
   <div class="bg-white shadow-md rounded-lg p-8 max-w-2xl w-full">
     <h1 class="text-3xl font-bold mb-6 text-center">Config Page</h1>
 
-    <!-- Form for Adding Configs (Empty for now) -->
-    <form method="POST" class="space-y-4">
-      <label for="config_input" class="block font-medium">Add a Config:</label>
-      <input type="text" name="config_input" id="config_input" class="w-full p-4 border border-gray-300 rounded bg-gray-50 text-gray-800" placeholder="Config name or value" required />
+    <!-- Table of Button-URL Pairs -->
+    <form method="POST" id="config-form">
+      <table class="min-w-full table-auto mb-4">
+        <thead>
+          <tr>
+            <th class="px-4 py-2 text-left">Button Name</th>
+            <th class="px-4 py-2 text-left">URL</th>
+            <th class="px-4 py-2"></th>
+          </tr>
+        </thead>
+        <tbody id="button-url-table">
+          {% for idx, pair in enumerate(configs) %}
+          <tr id="pair-{{ idx }}">
+            <td class="px-4 py-2">
+              <input type="text" class="w-full p-2 border border-gray-300 rounded" name="button_name_{{ idx }}" value="{{ pair['button_name'] }}" readonly />
+            </td>
+            <td class="px-4 py-2">
+              <input type="url" class="w-full p-2 border border-gray-300 rounded" name="url_{{ idx }}" value="{{ pair['url'] }}" />
+            </td>
+            <td class="px-4 py-2 text-center">
+              <button type="button" class="text-red-500" onclick="deletePair({{ idx }})">🗑️</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
 
-      <div class="flex gap-4 justify-center">
-        <button type="submit" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded">
-          Save Config
-        </button>
+      <!-- Add New Button-URL Pair (Always Visible) -->
+      <div class="mt-4 flex gap-4" id="new-row-container">
+        <input type="text" id="new-button-name" class="w-full p-2 border border-gray-300 rounded" placeholder="New Button Name" />
+        <input type="url" id="new-url" class="w-full p-2 border border-gray-300 rounded" placeholder="New URL" />
+        <button type="button" onclick="addPair()" class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded">+</button>
       </div>
-    </form>
 
-    <!-- Display Configs (If applicable) -->
-    {% if configs %}
-      <h2 class="text-xl font-semibold mt-6">Current Configs:</h2>
-      <ul class="list-disc pl-6">
-        {% for config in configs %}
-          <li>{{ config }}</li>
-        {% endfor %}
-      </ul>
-    {% endif %}
+      <!-- Save Config Button -->
+      <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded mt-4">Save Config</button>
+    </form>
   </div>
+
+  <script>
+    function addPair() {
+      const buttonName = document.getElementById('new-button-name').value;
+      const url = document.getElementById('new-url').value;
+
+      if (!buttonName || !url) return;
+
+      const table = document.getElementById('button-url-table');
+      const rowIndex = table.rows.length;
+
+      const newRow = document.createElement('tr');
+      newRow.id = `pair-${rowIndex}`;
+      newRow.innerHTML = `
+        <td class="px-4 py-2">
+          <input type="text" class="w-full p-2 border border-gray-300 rounded" name="button_name_${rowIndex}" value="${buttonName}" readonly />
+        </td>
+        <td class="px-4 py-2">
+          <input type="url" class="w-full p-2 border border-gray-300 rounded" name="url_${rowIndex}" value="${url}" />
+        </td>
+        <td class="px-4 py-2 text-center">
+          <button type="button" class="text-red-500" onclick="deletePair(${rowIndex})">🗑️</button>
+        </td>
+      `;
+      table.appendChild(newRow);
+
+      // Clear input fields
+      document.getElementById('new-button-name').value = '';
+      document.getElementById('new-url').value = '';
+    }
+
+    function deletePair(index) {
+      const row = document.getElementById(`pair-${index}`);
+      row.remove();
+    }
+  </script>
 </body>
 </html>
