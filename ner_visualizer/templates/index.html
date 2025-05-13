@@ -2,54 +2,79 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Main Page</title>
+  <title>NER</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
 
-  <!-- Config Button (Always Visible) -->
+  <!-- Config Button  -->
   <div class="absolute top-4 left-4 z-20">
     <a href="{{ url_for('config') }}" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded shadow-lg">
-      Go to Config Page
+      Config
     </a>
   </div>
 
+  <!-- Form for entering text and submitting to NER -->
   <div class="bg-white shadow-md rounded-lg p-8 max-w-2xl w-full">
-    <h1 class="text-3xl font-bold mb-6 text-center">Main Page</h1>
+    <h1 class="text-3xl font-bold mb-6 text-center">NER Visualizer</h1>
 
-    <!-- Text Field for Input -->
-    <div class="mb-4">
-      <textarea id="user-text" class="w-full p-2 border border-gray-300 rounded" rows="4" placeholder="Enter text here"></textarea>
-    </div>
+    <form action="/" method="POST">
+        <div class="mb-4">
+          <textarea id="user-text" name="text" class="w-full p-2 border border-gray-300 rounded" rows="4" placeholder="Enter text here">{{ raw_text }}</textarea>
+        </div>
 
-    <!-- Display Config Buttons Below -->
-    <div class="mb-4">
-      <h2 class="text-xl font-semibold">Buttons from Config</h2>
-      <div id="config-buttons" class="mt-4 flex flex-wrap gap-4">
-        {% for button in configs %}
-          <button type="button" class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded" onclick="sendUrl('{{ button['url'] }}')">
-            {{ button['button_name'] }}
-          </button>
-        {% endfor %}
-      </div>
+        <!-- Buttons from configs -->
+        <div class="mb-4">
+          <h2 class="text-xl font-semibold">Run NER</h2>
+          <div id="config-buttons" class="mt-4 flex flex-wrap gap-4">
+            {% for button in configs %}
+              <button type="submit" name="url" value="{{ button['url'] }}" class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded">
+                {{ button['button_name'] }}
+              </button>
+            {% endfor %}
+          </div>
+        </div>
+      </form>
+
+  <!-- Highlighted NER text -->
+  {% if highlighted_text %}
+  <div class="mt-6 p-4 border border-gray-300 rounded bg-gray-50 shadow-inner">
+    <h2 class="text-xl font-semibold">NER result</h2>
+    <div class="mt-4" style="white-space: pre-wrap;">{{ highlighted_text | safe }}</div>
+  </div>
+  {% endif %}
+
+  <!-- Legend -->
+  {% if type_colors %}
+  <div class="legend-container">
+    <h2 class="text-xl font-semibold mb-4">Entities</h2>
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+      {% for type_name, color in type_colors.items() %}
+        <div class="legend-item">
+          <div style="background-color: {{ color }};"></div>
+          <span>{{ type_name }}</span>
+        </div>
+      {% endfor %}
     </div>
   </div>
+  {% endif %}
 
-  <script>
-    // Function to send the URL to the backend when a button is clicked
-    function sendUrl(url) {
-      fetch('/send-url', {
+<script>
+  function sendUrl(url) {
+      const text = document.getElementById('user-text').value;
+      fetch('/ner', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `url=${encodeURIComponent(url)}`
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text, url: `${encodeURIComponent(url)}`})
       })
       .then(response => response.json())
       .then(data => {
         if (data.status === 'success') {
-          alert('URL sent successfully: ' + data.url);
+          // Update the highlighted text area with the returned highlighted HTML
+          document.getElementById('highlighted-text').innerHTML = data.highlighted_html;
+        } else {
+          alert('Error processing the NER request');
         }
       })
       .catch(error => {
@@ -57,6 +82,6 @@
         alert('Error sending URL');
       });
     }
-  </script>
+</script>
 </body>
 </html>
