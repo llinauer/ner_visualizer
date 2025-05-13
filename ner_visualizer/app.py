@@ -3,7 +3,7 @@ from markupsafe import Markup
 import json
 import re
 import os
-
+import requests
 
 app = Flask(__name__)
 
@@ -28,19 +28,18 @@ def save_configs(configs: list[dict]) -> None:
         json.dump(configs, file, indent=4)
 
 
-# Shared keyword data
-HIGHLIGHTS = {
-    "warning": {"type": "alert", "tooltip": "This is a warning"},
-    "important": {"type": "priority", "tooltip": "This is important"},
-    "note": {"type": "note", "tooltip": "Take note of this"},
-    "error": {"type": "alert", "tooltip": "Something went wrong"},
-    "caution": {"type": "alert", "tooltip": "Exercise caution"},
-    "info": {"type": "info", "tooltip": "General information"},
-    "success": {"type": "positive", "tooltip": "Everything is OK"},
-    "failure": {"type": "negative", "tooltip": "A failure occurred"},
-    "critical": {"type": "priority", "tooltip": "Critical situation"},
-    "update": {"type": "info", "tooltip": "An update has been made"},
-}
+def send_ner_request(model_url: str, text: str) -> dict:
+    try:
+        response = requests.post(model_url, headers={"Content-Type": "application/json"}, json={"text": text})
+        response.raise_for_status()
+    except requests.HTTPError as e:
+        print(f"Error sending POST request to {model_url}: {e}")
+        return {}
+    except requests.exceptions.ConnectionError as e:
+        print(f"Could not reach model at {model_url}: {e}")
+        return {}
+    return response.json()
+
 
 COLOR_PALETTE = [
     "#fca5a5",
@@ -71,18 +70,25 @@ def get_color_by_type(type_name: str) -> str:
     return COLOR_PALETTE[index]
 
 
-def highlight_text(text: str) -> str:
-    keywords = HIGHLIGHTS
+def format_ner_result(ner_result: dict) -> dict:
+    return {entity: {"type": entity_type, "tooltip": entity_type} for entity, entity_type in ner_result.items()}
+
+
+def highlight_text(text: str, ner_result: dict) -> str:
+    if not ner_result:
+        return text
+
+    entities = format_ner_result(ner_result)
 
     def replacer(match):
         word = match.group(0)
-        meta = keywords[word.lower()]
-        type_name = meta["type"]
-        tooltip = meta["tooltip"]
+        meta = entities.get(word, "")
+        type_name = meta.get("type", "")
+        tooltip = meta.get("tooltip", "")
         color = get_color_by_type(type_name)
         return f'<span class="highlight" style="background-color: {color};" data-tooltip="{tooltip}">{word}</span>'
 
-    pattern = re.compile(r"\b(" + "|".join(re.escape(k) for k in keywords) + r")\b", re.IGNORECASE)
+    pattern = re.compile(r"\b(" + "|".join(re.escape(k) for k in entities) + r")\b", re.IGNORECASE)
     return pattern.sub(replacer, text)
 
 
@@ -92,29 +98,18 @@ def index():
     highlighted_html = ""
     type_color_map = {}
 
-    if request.method == "POST":
-        raw_text = request.form.get("text_input", "")
-        keywords = HIGHLIGHTS
-
-        # Get all unique types from the keywords
-        unique_types = {meta["type"] for meta in keywords.values()}
-        type_color_map = {type_name: get_color_by_type(type_name) for type_name in unique_types}
-
-        # Perform highlight
-        highlighted_html = highlight_text(raw_text)
-
     config = load_configs()
+
+    if request.method == "POST":
+        url = request.form.get("url")
+        raw_text = request.form.get("text")
+        ner_result = send_ner_request(url, raw_text)
+        highlighted_html = highlight_text(raw_text, ner_result)
+        type_color_map = {type_name: get_color_by_type(type_name) for type_name in ner_result.values()}
 
     return render_template(
         "index.html", raw_text=raw_text, highlighted_text=Markup(highlighted_html), type_colors=type_color_map, configs=config
     )
-
-
-@app.route("/send-url", methods=["POST"])
-def send_url():
-    url = request.form["url"]
-    # Do something with the URL, like process it or store it
-    return jsonify({"status": "success", "url": url})
 
 
 @app.route("/save-config", methods=["POST"])
