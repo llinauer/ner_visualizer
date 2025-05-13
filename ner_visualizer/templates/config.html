@@ -22,7 +22,7 @@
       <table class="min-w-full table-auto mb-4">
         <thead>
           <tr>
-            <th class="px-4 py-2 text-left">Button Name</th>
+            <th class="px-4 py-2 text-left">Model Name</th>
             <th class="px-4 py-2 text-left">URL</th>
             <th class="px-4 py-2"></th>
           </tr>
@@ -31,7 +31,7 @@
           {% for idx, pair in enumerate(configs) %}
           <tr id="pair-{{ idx }}">
             <td class="px-4 py-2">
-              <input type="text" class="w-full p-2 border border-gray-300 rounded" name="button_name_{{ idx }}" value="{{ pair['button_name'] }}" readonly />
+              <input type="text" class="w-full p-2 border border-gray-300 rounded" name="button_name_{{ idx }}" value="{{ pair['button_name'] }}" />
             </td>
             <td class="px-4 py-2">
               <input type="url" class="w-full p-2 border border-gray-300 rounded" name="url_{{ idx }}" value="{{ pair['url'] }}" />
@@ -46,7 +46,7 @@
 
       <!-- Add New Button-URL Pair (Always Visible) -->
       <div class="mt-4 flex gap-4" id="new-row-container">
-        <input type="text" id="new-button-name" class="w-full p-2 border border-gray-300 rounded" placeholder="New Button Name" />
+        <input type="text" id="new-button-name" class="w-full p-2 border border-gray-300 rounded" placeholder="New Model" />
         <input type="url" id="new-url" class="w-full p-2 border border-gray-300 rounded" placeholder="New URL" />
         <button type="button" onclick="addPair()" class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded">+</button>
       </div>
