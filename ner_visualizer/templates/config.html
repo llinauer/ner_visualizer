@@ -18,7 +18,7 @@
     <h1 class="text-3xl font-bold mb-6 text-center">Config Page</h1>
 
     <!-- Table of Button-URL Pairs -->
-    <form method="POST" id="config-form">
+    <form id="config-form" onsubmit="submitConfig(event)">
       <table class="min-w-full table-auto mb-4">
         <thead>
           <tr>
@@ -90,6 +90,66 @@
       const row = document.getElementById(`pair-${index}`);
       row.remove();
     }
-  </script>
+
+    function submitConfig(event) {
+    event.preventDefault();
+
+    const table = document.getElementById('button-url-table');
+    const rows = table.querySelectorAll('tr');
+    const configs = [];
+
+    rows.forEach((row, index) => {
+      const nameInput = row.querySelector(`input[name^="button_name_"]`);
+      const urlInput = row.querySelector(`input[name^="url_"]`);
+      if (nameInput && urlInput) {
+        configs.push({
+          button_name: nameInput.value.trim(),
+          url: urlInput.value.trim()
+        });
+      }
+    });
+
+    fetch('/save-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(configs)
+    })
+    .then(response => {
+      if (!response.ok) throw new Error('Save failed');
+      return response.json();
+    })
+    .then(data => {
+      alert('Config saved!');
+      // Update table in-place so it stays in sync
+      updateTable(configs);
+    })
+    .catch(error => {
+      console.error(error);
+      alert('Error saving config');
+    });
+  }
+
+  function updateTable(configs) {
+    const table = document.getElementById('button-url-table');
+    table.innerHTML = '';
+
+    configs.forEach((pair, index) => {
+      const row = document.createElement('tr');
+      row.id = `pair-${index}`;
+      row.innerHTML = `
+        <td class="px-4 py-2">
+          <input type="text" class="w-full p-2 border border-gray-300 rounded" name="button_name_${index}" value="${pair.button_name}" readonly />
+        </td>
+        <td class="px-4 py-2">
+          <input type="url" class="w-full p-2 border border-gray-300 rounded" name="url_${index}" value="${pair.url}" />
+        </td>
+        <td class="px-4 py-2 text-center">
+          <button type="button" class="text-red-500" onclick="deletePair(${index})">🗑️</button>
+        </td>
+      `;
+      table.appendChild(row);
+    });
+  }
+</script>
 </body>
 </html>
