@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Backend Highlight PoC</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+  <div class="absolute top-4 left-4 z-20">
+    <!-- Config Button -->
+    <a href="{{ url_for('config') }}" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded shadow-lg">
+      Config
+    </a>
+  </div>
+
+  <div class="bg-white shadow-md rounded-lg p-8 max-w-2xl w-full">
+    <h1 class="text-3xl font-bold mb-6 text-center">Text Highlighter</h1>
+
+    <!-- Text Input Form -->
+    <form method="POST" class="mb-6 space-y-4">
+      <label for="text_input" class="block font-medium">Enter your text:</label>
+      <textarea name="text_input" id="text_input"
+                rows="8"
+                class="w-full p-4 border border-gray-300 rounded bg-gray-50 text-gray-800"
+                placeholder="Paste or type your text here..." required>{{ raw_text or '' }}</textarea>
+
+      <!-- Action buttons -->
+      <div class="flex gap-4 justify-center">
+        <button type="submit" name="action" value="important"
+                class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded">
+          Highlight Important
+        </button>
+        <button type="submit" name="action" value="all"
+                class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded">
+          Highlight Everything
+        </button>
+      </div>
+    </form>
+
+    {% if highlighted_text %}
+      <h2 class="text-xl font-semibold mb-2">Highlighted Text:</h2>
+      <div id="content" class="whitespace-pre-wrap bg-gray-50 p-4 rounded border border-gray-300">
+        {{ highlighted_text | safe }}
+      </div>
+    {% endif %}
+  </div>
+</body>
+</html>

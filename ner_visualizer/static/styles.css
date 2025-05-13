@@ -1,0 +1,46 @@
+/* Styles for the Legend (Right-Aligned) */
+.legend-container {
+    position: fixed;
+    top: 50%;
+    right: 100px;
+    transform: translateY(-50%); /* Center the legend vertically */
+    background-color: #f9fafb;
+    border-radius: 8px;
+    padding: 16px;
+    border: 1px solid #e0e0e0;
+    max-width: 250px; /* Set a max-width for the legend box */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow for visual depth */
+    z-index: 10;
+  }
+  
+  .legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  
+  .legend-item:last-child {
+    margin-bottom: 0;
+  }
+  
+  .legend-item div {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    margin-right: 8px;
+  }
+  
+  .legend-item span {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+  }
+  
+  .grid-cols-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .grid-cols-3 {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+  
