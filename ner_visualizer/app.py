@@ -10,7 +10,7 @@ app = Flask(__name__)
 CONFIG_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
 
 # Function to load the config from a file
-def load_config():
+def load_configs():
     if os.path.exists(CONFIG_FILE_PATH):
         try:
             with open(CONFIG_FILE_PATH, 'r') as f:
@@ -21,6 +21,10 @@ def load_config():
     else:
         print("Config file not found.")
         return [] 
+
+def save_configs(configs):
+    with open("configs.json", "w") as file:
+        json.dump(configs, file, indent=4)
 
 
 # Shared keyword data
@@ -93,7 +97,7 @@ def index():
         # Perform highlight
         highlighted_html = highlight_text(raw_text, strategy=action)
     
-    config = load_config()
+    config = load_configs()
 
     return render_template(
         "index.html",
@@ -111,7 +115,7 @@ def send_url():
 
 @app.route("/config", methods=["GET", "POST"])
 def config():
-    configs = load_config()  # Load current configs from the file
+    configs = load_configs()  # Load current configs from the file
     env = Environment()  # Create a Jinja2 environment
 
     if request.method == "POST":
