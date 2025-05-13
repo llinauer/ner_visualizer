@@ -1,10 +1,10 @@
 [
     {
         "button_name": "NER model 1",
-        "url": "https://example1.com"
+        "url": "http://localhost:8000"
     },
     {
         "button_name": "NER model 2",
-        "url": "https://example2.com"
+        "url": "http://localhost:8001"
     }
 ]
