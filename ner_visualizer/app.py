@@ -4,16 +4,17 @@ import json
 import re
 import os
 import requests
+from ner_visualizer.config import Config
 
 app = Flask(__name__)
 
-CONFIG_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+MODEL_CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "model_config.json")
 
 
 def load_configs() -> list:
-    if os.path.exists(CONFIG_FILE_PATH):
+    if os.path.exists(MODEL_CONFIG_PATH):
         try:
-            with open(CONFIG_FILE_PATH, "r") as f:
+            with open(MODEL_CONFIG_PATH, "r") as f:
                 return json.load(f)
         except json.JSONDecodeError:
             print("Error decoding JSON from the config file.")
@@ -24,7 +25,7 @@ def load_configs() -> list:
 
 
 def save_configs(configs: list[dict]) -> None:
-    with open(CONFIG_FILE_PATH, "w") as file:
+    with open(MODEL_CONFIG_PATH, "w") as file:
         json.dump(configs, file, indent=4)
 
 
@@ -128,4 +129,4 @@ def config():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host=Config.HOST, port=Config.PORT, debug=Config.DEBUG)

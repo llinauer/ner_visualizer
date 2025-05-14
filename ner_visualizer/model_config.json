@@ -1,0 +1,18 @@
+[
+    {
+        "button_name": "Flair",
+        "url": "http://localhost:8000"
+    },
+    {
+        "button_name": "Roberta",
+        "url": "http://localhost:8001"
+    },
+    {
+        "button_name": "Robert GER",
+        "url": "http://localhost:8002"
+    },
+    {
+        "button_name": "Gliner",
+        "url": "http://localhost:8003"
+    }
+]
