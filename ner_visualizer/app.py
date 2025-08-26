@@ -83,7 +83,7 @@ def highlight_text(text: str, ner_result: dict) -> str:
 
     def replacer(match):
         word = match.group(0)
-        meta = entities.get(word, "")
+        meta = entities.get(word, {})
         type_name = meta.get("type", "")
         tooltip = meta.get("tooltip", "")
         color = get_color_by_type(type_name)
