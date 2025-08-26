@@ -19,17 +19,27 @@
   <div class="bg-white shadow-md rounded-lg p-8 max-w-2xl w-full">
     <h1 class="text-3xl font-bold mb-6 text-center">NER Visualizer</h1>
 
-    <form action="/" method="POST">
+      <form id="config-form" action="/" method="POST">
         <div class="mb-4">
           <textarea id="user-text" name="text" class="w-full p-2 border border-gray-300 rounded" rows="4" placeholder="Enter text here">{{ raw_text }}</textarea>
         </div>
+
+        <!-- Hidden inputs that get populated based on which button is clicked -->
+        <input type="hidden" id="hidden-url" name="url" value="">
+        <input type="hidden" id="hidden-extra" name="extra_args" value="">
 
         <!-- Buttons from configs -->
         <div class="mb-4">
           <h2 class="text-xl font-semibold">Run NER</h2>
           <div id="config-buttons" class="mt-4 flex flex-wrap gap-4">
             {% for button in configs %}
-              <button type="submit" name="url" value="{{ button['url'] }}" class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded">
+              <button
+                type="button"
+                class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded"
+                data-url="{{ button['url'] }}"
+                data-extra='{{ button.get("extra_args", "") | tojson }}'
+                onclick="submitWithConfig(this)"
+              >
                 {{ button['button_name'] }}
               </button>
             {% endfor %}
@@ -41,7 +51,7 @@
   {% if highlighted_text %}
   <div class="mt-6 p-4 border border-gray-300 rounded bg-gray-50 shadow-inner">
     <h2 class="text-xl font-semibold">NER result</h2>
-    <div class="mt-4" style="white-space: pre-wrap;">{{ highlighted_text | safe }}</div>
+    <div id="highlighted-text" class="mt-4" style="white-space: pre-wrap;">{{ highlighted_text | safe }}</div>
   </div>
   {% endif %}
 
@@ -59,29 +69,29 @@
     </div>
   </div>
   {% endif %}
+</div>
 
 <script>
-  function sendUrl(url) {
-      const text = document.getElementById('user-text').value;
-      fetch('/ner', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: text, url: `${encodeURIComponent(url)}`})
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === 'success') {
-          // Update the highlighted text area with the returned highlighted HTML
-          document.getElementById('highlighted-text').innerHTML = data.highlighted_html;
-        } else {
-          alert('Error processing the NER request');
-        }
-      })
-      .catch(error => {
-        console.error('Error:', error);
-        alert('Error sending URL');
-      });
+  function submitWithConfig(btn) {
+    // Grab the per-button values
+    const url = btn.dataset.url || '';
+    // data-extra is JSON-encoded by Jinja's tojson; parse then re-stringify to send a clean string
+    let extra = '';
+    try {
+      const parsed = JSON.parse(btn.dataset.extra || '""');
+      // If parsed is an object/array, send JSON; if string, send as-is
+      extra = (typeof parsed === 'string') ? parsed : JSON.stringify(parsed);
+    } catch (_) {
+      extra = btn.dataset.extra || '';
     }
+
+    // Populate hidden inputs
+    document.getElementById('hidden-url').value = url;
+    document.getElementById('hidden-extra').value = extra;
+
+    // Submit the form
+    document.getElementById('config-form').submit();
+  }
 </script>
 </body>
 </html>

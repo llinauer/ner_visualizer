@@ -5,6 +5,7 @@ import re
 import os
 import requests
 from ner_visualizer.config import Config
+from typing import Any
 
 app = Flask(__name__)
 
@@ -29,16 +30,38 @@ def save_configs(configs: list[dict]) -> None:
         json.dump(configs, file, indent=4)
 
 
-def send_ner_request(model_url: str, text: str) -> dict:
-    try:
-        response = requests.post(model_url, headers={"Content-Type": "application/json"}, json={"text": text})
-        response.raise_for_status()
-    except requests.HTTPError as e:
-        print(f"Error sending POST request to {model_url}: {e}")
+def process_extra_args(extra_args_str: str) -> dict[str, Any]:
+    if not extra_args_str:
         return {}
+
+    args_list = extra_args_str.split(",")
+    try:
+        extra_args = {key_val_pair.split(":")[0].strip(): key_val_pair.split(":")[1].strip() for key_val_pair in args_list}
+    except Exception:
+        print("Could not parse Extra Args. Check if format matches key1: value1, key2: value2, ...")
+        return {}
+
+    return extra_args
+
+
+def send_ner_request(model_url: str, text: str, extra_args: dict[str, Any]) -> dict:
+    try:
+        response = requests.post(model_url, headers={"Content-Type": "application/json"}, json={"text": text, **extra_args})
     except requests.exceptions.ConnectionError as e:
         print(f"Could not reach model at {model_url}: {e}")
         return {}
+    except Exception as e:
+        print(f"Request to {model_url} failed: {e}")
+        return {}
+
+    if response.status_code > 299:
+        try:
+            error_response = json.loads(response.text)
+            print(f"Unsuccessful request to {model_url}: {error_response.get('error', '')}")
+        except json.JSONDecodeError:
+            print(f"Unsuccessful request to {model_url}: {response.text}")
+        return {}
+
     return response.json()
 
 
@@ -102,9 +125,10 @@ def index():
     config = load_configs()
 
     if request.method == "POST":
-        url = request.form.get("url")
-        raw_text = request.form.get("text")
-        ner_result = send_ner_request(url, raw_text)
+        url = request.form.get("url", "")
+        raw_text = request.form.get("text", "")
+        extra_args = process_extra_args(request.form.get("extra_args", ""))
+        ner_result = send_ner_request(url, raw_text, extra_args)
         highlighted_html = highlight_text(raw_text, ner_result)
         type_color_map = {type_name: get_color_by_type(type_name) for type_name in ner_result.values()}
 
