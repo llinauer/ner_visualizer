@@ -93,5 +93,84 @@
     document.getElementById('config-form').submit();
   }
 </script>
+
+<!-- Put this right before </body> -->
+<div id="app-tooltip" style="
+  position: fixed;
+  z-index: 2147483647;
+  pointer-events: none;
+  background: rgba(17,24,39,0.95); /* gray-900-ish */
+  color: white;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  line-height: 1.2;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  transform: translate(-50%, -125%);
+  display: none;
+  max-width: 60vw;
+  word-wrap: break-word;
+"></div>
+
+<script>
+  (function () {
+    const tooltip = document.getElementById('app-tooltip');
+
+    function showTooltip(text) {
+      tooltip.textContent = text || '';
+      tooltip.style.display = text ? 'block' : 'none';
+    }
+
+    function hideTooltip() {
+      tooltip.style.display = 'none';
+    }
+
+    function positionTooltip(e) {
+      const offset = 14; // px away from cursor
+      let x = e.clientX + offset;
+      let y = e.clientY - offset;
+
+      // keep inside viewport
+      const rect = tooltip.getBoundingClientRect();
+      const vw = document.documentElement.clientWidth;
+      const vh = document.documentElement.clientHeight;
+
+      if (x + rect.width > vw - 8) x = vw - rect.width - 8;
+      if (y - rect.height < 0) y = e.clientY + offset; // flip below mouse if needed
+
+      tooltip.style.left = x + 'px';
+      tooltip.style.top = y + 'px';
+    }
+
+    document.addEventListener('mouseover', (e) => {
+      const el = e.target.closest('.ner-highlight');  // was .highlight
+      if (!el) return;
+      const txt = el.getAttribute('aria-label') || '';
+      if (!txt) return;
+      showTooltip(txt);
+      positionTooltip(e);
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (tooltip.style.display === 'block') {
+        positionTooltip(e);
+      }
+    });
+
+    document.addEventListener('mouseout', (e) => {
+      const el = e.target.closest('.ner-highlight');  // was .highlight
+      if (!el) return;
+      const related = e.relatedTarget && e.relatedTarget.closest
+        ? e.relatedTarget.closest('.ner-highlight')  // was .highlight
+        : null;
+      if (!related) hideTooltip();
+    });
+
+    // Safety: hide on scroll or escape
+    document.addEventListener('scroll', hideTooltip, true);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideTooltip(); });
+  })();
+</script>
+
 </body>
 </html>

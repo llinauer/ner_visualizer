@@ -6,6 +6,7 @@ import os
 import requests
 from ner_visualizer.config import Config
 from typing import Any
+import html
 
 app = Flask(__name__)
 
@@ -103,14 +104,16 @@ def highlight_text(text: str, ner_result: dict) -> str:
         return text
 
     entities = format_ner_result(ner_result)
+    entities_ci = {k.lower(): v for k, v in entities.items()}
 
     def replacer(match):
         word = match.group(0)
-        meta = entities.get(word, {})
+        meta = entities_ci.get(word.lower(), {})
         type_name = meta.get("type", "")
-        tooltip = meta.get("tooltip", "")
+        label = meta.get("tooltip", type_name)
         color = get_color_by_type(type_name)
-        return f'<span class="highlight" style="background-color: {color};" data-tooltip="{tooltip}">{word}</span>'
+        safe_label = html.escape(label, quote=True)
+        return f'<span class="ner-highlight" style="background-color: {color};" aria-label="{safe_label}">{word}</span>'
 
     pattern = re.compile(r"\b(" + "|".join(re.escape(k) for k in entities) + r")\b", re.IGNORECASE)
     return pattern.sub(replacer, text)
