@@ -71,6 +71,91 @@
   {% endif %}
 </div>
 
+{% if comparison_columns %}
+  <div class="mt-10">
+    <h2 class="text-2xl font-bold mb-3">Cached comparisons</h2>
+    <p class="text-sm text-gray-500 mb-4">
+      Showing results already in cache for this text and Extra Args. No new model calls.
+    </p>
+
+    <!-- Per-model columns -->
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {% for col in comparison_columns %}
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
+          <h3 class="font-semibold text-lg mb-2">{{ col.model_name }}</h3>
+
+          <!-- Label chips with counts -->
+          <div class="flex flex-wrap gap-2 mb-3">
+            {% for label, count in col.counts.items() %}
+              <span class="px-2 py-1 rounded text-xs" style="background-color: {{ type_colors.get(label, '#eee') }}">
+                {{ label }} ({{ count }})
+              </span>
+            {% endfor %}
+          </div>
+
+          <!-- Entity list -->
+          <div class="max-h-56 overflow-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left">
+                  <th class="py-1 pr-2">Entity</th>
+                  <th class="py-1">Label</th>
+                </tr>
+              </thead>
+              <tbody>
+                 {% for item in col['items'] %}
+                  <tr class="border-t border-gray-100">
+                    <td class="py-1 pr-2">{{ item[0] }}</td>
+                    <td class="py-1">{{ item[1] }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <!-- Unified comparison table -->
+    {% if comparison_table.models|length > 1 %}
+      <div class="mt-8 bg-white border border-gray-200 rounded-lg shadow-sm p-4 overflow-auto">
+        <h3 class="font-semibold text-lg mb-3">Entity comparison table</h3>
+        <table class="min-w-full text-sm">
+          <thead>
+            <tr class="text-left">
+              <th class="py-1 pr-4">Entity</th>
+              {% for m in comparison_table.models %}
+                <th class="py-1 pr-4">{{ m }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in comparison_table.rows %}
+              <tr class="border-t border-gray-100">
+                <td class="py-1 pr-4 font-medium">{{ row.entity }}</td>
+                {% for m in comparison_table.models %}
+                  {% set label = row.by_model.get(m, '') %}
+                  <td class="py-1 pr-4">
+                    {% if label %}
+                      <span class="px-2 py-0.5 rounded" style="background-color: {{ type_colors.get(label, '#eee') }}">
+                        {{ label }}
+                      </span>
+                    {% else %}
+                      <span class="text-gray-400">—</span>
+                    {% endif %}
+                  </td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </div>
+{% endif %}
+
+
+
 <script>
   function submitWithConfig(btn) {
     // Grab the per-button values
