@@ -1,18 +1,12 @@
 [
     {
         "button_name": "Flair",
-        "url": "http://localhost:8000"
+        "url": "http://localhost:8004",
+        "extra_args": ""
     },
     {
-        "button_name": "Roberta",
-        "url": "http://localhost:8001"
-    },
-    {
-        "button_name": "Robert GER",
-        "url": "http://localhost:8002"
-    },
-    {
-        "button_name": "Gliner",
-        "url": "http://localhost:8003"
+        "button_name": "Gliner De/En News 1 epoch",
+        "url": "http://localhost:8003",
+        "extra_args": ""
     }
 ]

@@ -14,7 +14,7 @@
     </a>
   </div>
 
-  <div class="bg-white shadow-md rounded-lg p-8 max-w-2xl w-full">
+  <div class="bg-white shadow-md rounded-lg p-8 max-w-3xl w-full">
     <h1 class="text-3xl font-bold mb-6 text-center">Config Page</h1>
 
     <!-- Table of Button-URL Pairs -->
@@ -24,6 +24,7 @@
           <tr>
             <th class="px-4 py-2 text-left">Model Name</th>
             <th class="px-4 py-2 text-left">URL</th>
+            <th class="px-4 py-2 text-left">Extra Args ("key": "value")</th>
             <th class="px-4 py-2"></th>
           </tr>
         </thead>
@@ -35,6 +36,9 @@
             </td>
             <td class="px-4 py-2">
               <input type="url" class="w-full p-2 border border-gray-300 rounded" name="url_{{ idx }}" value="{{ pair['url'] }}" />
+            </td>
+            <td class="px-4 py-2">
+              <input type="text" class="w-full p-2 border border-gray-300 rounded" name="extra_args_{{ idx }}" value="{{ pair.get('extra_args', '') }}" />
             </td>
             <td class="px-4 py-2 text-center">
               <button type="button" class="text-red-500" onclick="deletePair({{ idx }})">🗑️</button>
@@ -48,6 +52,7 @@
       <div class="mt-4 flex gap-4" id="new-row-container">
         <input type="text" id="new-button-name" class="w-full p-2 border border-gray-300 rounded" placeholder="New Model" />
         <input type="url" id="new-url" class="w-full p-2 border border-gray-300 rounded" placeholder="New URL" />
+        <input type="text" id="new-extra-args" class="w-full p-2 border border-gray-300 rounded" placeholder="Extra Args ('key': 'value')" />
         <button type="button" onclick="addPair()" class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded">+</button>
       </div>
 
@@ -60,6 +65,7 @@
     function addPair() {
       const buttonName = document.getElementById('new-button-name').value;
       const url = document.getElementById('new-url').value;
+      const extraArgs = document.getElementById('new-extra-args').value;
 
       if (!buttonName || !url) return;
 
@@ -75,6 +81,9 @@
         <td class="px-4 py-2">
           <input type="url" class="w-full p-2 border border-gray-300 rounded" name="url_${rowIndex}" value="${url}" />
         </td>
+        <td class="px-4 py-2">
+          <input type="text" class="w-full p-2 border border-gray-300 rounded" name="extra_args_${rowIndex}" value="${extraArgs}" />
+        </td>
         <td class="px-4 py-2 text-center">
           <button type="button" class="text-red-500" onclick="deletePair(${rowIndex})">🗑️</button>
         </td>
@@ -84,6 +93,7 @@
       // Clear input fields
       document.getElementById('new-button-name').value = '';
       document.getElementById('new-url').value = '';
+      document.getElementById('new-extra-args').value = '';
     }
 
     function deletePair(index) {
@@ -92,64 +102,68 @@
     }
 
     function submitConfig(event) {
-    event.preventDefault();
+      event.preventDefault();
 
-    const table = document.getElementById('button-url-table');
-    const rows = table.querySelectorAll('tr');
-    const configs = [];
+      const table = document.getElementById('button-url-table');
+      const rows = table.querySelectorAll('tr');
+      const configs = [];
 
-    rows.forEach((row, index) => {
-      const nameInput = row.querySelector(`input[name^="button_name_"]`);
-      const urlInput = row.querySelector(`input[name^="url_"]`);
-      if (nameInput && urlInput) {
-        configs.push({
-          button_name: nameInput.value.trim(),
-          url: urlInput.value.trim()
-        });
-      }
-    });
+      rows.forEach((row, index) => {
+        const nameInput = row.querySelector(`input[name^="button_name_"]`);
+        const urlInput = row.querySelector(`input[name^="url_"]`);
+        const extraInput = row.querySelector(`input[name^="extra_args_"]`);
+        if (nameInput && urlInput) {
+          configs.push({
+            button_name: nameInput.value.trim(),
+            url: urlInput.value.trim(),
+            extra_args: extraInput ? extraInput.value.trim() : ''
+          });
+        }
+      });
 
-    fetch('/save-config', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(configs)
-    })
-    .then(response => {
-      if (!response.ok) throw new Error('Save failed');
-      return response.json();
-    })
-    .then(data => {
-      alert('Config saved!');
-      // Update table in-place so it stays in sync
-      updateTable(configs);
-    })
-    .catch(error => {
-      console.error(error);
-      alert('Error saving config');
-    });
-  }
+      fetch('/save-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(configs)
+      })
+      .then(response => {
+        if (!response.ok) throw new Error('Save failed');
+        return response.json();
+      })
+      .then(data => {
+        alert('Config saved!');
+        updateTable(configs);
+      })
+      .catch(error => {
+        console.error(error);
+        alert('Error saving config');
+      });
+    }
 
-  function updateTable(configs) {
-    const table = document.getElementById('button-url-table');
-    table.innerHTML = '';
+    function updateTable(configs) {
+      const table = document.getElementById('button-url-table');
+      table.innerHTML = '';
 
-    configs.forEach((pair, index) => {
-      const row = document.createElement('tr');
-      row.id = `pair-${index}`;
-      row.innerHTML = `
-        <td class="px-4 py-2">
-          <input type="text" class="w-full p-2 border border-gray-300 rounded" name="button_name_${index}" value="${pair.button_name}" readonly />
-        </td>
-        <td class="px-4 py-2">
-          <input type="url" class="w-full p-2 border border-gray-300 rounded" name="url_${index}" value="${pair.url}" />
-        </td>
-        <td class="px-4 py-2 text-center">
-          <button type="button" class="text-red-500" onclick="deletePair(${index})">🗑️</button>
-        </td>
-      `;
-      table.appendChild(row);
-    });
-  }
-</script>
+      configs.forEach((pair, index) => {
+        const row = document.createElement('tr');
+        row.id = `pair-${index}`;
+        row.innerHTML = `
+          <td class="px-4 py-2">
+            <input type="text" class="w-full p-2 border border-gray-300 rounded" name="button_name_${index}" value="${pair.button_name}" readonly />
+          </td>
+          <td class="px-4 py-2">
+            <input type="url" class="w-full p-2 border border-gray-300 rounded" name="url_${index}" value="${pair.url}" />
+          </td>
+          <td class="px-4 py-2">
+            <input type="text" class="w-full p-2 border border-gray-300 rounded" name="extra_args_${index}" value="${pair.extra_args || ''}" />
+          </td>
+          <td class="px-4 py-2 text-center">
+            <button type="button" class="text-red-500" onclick="deletePair(${index})">🗑️</button>
+          </td>
+        `;
+        table.appendChild(row);
+      });
+    }
+  </script>
 </body>
 </html>
