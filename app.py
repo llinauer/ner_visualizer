@@ -9,7 +9,7 @@ from ner_visualizer.config_store import load_configs, save_configs
 from ner_visualizer.ner_utils import process_extra_args, highlight_text, get_color_by_type
 from ner_visualizer.services import send_ner_request
 from ner_visualizer.cache import sync_model_caches, get_cached_ner_result
-from ner_visualizer.compare import collect_cached_comparisons
+from ner_visualizer.compare import build_entity_columns
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("FLASK_SECRET_KEY", "dev-secret-change-me")
@@ -37,8 +37,9 @@ def _get_sid() -> str:
 def index():
     raw_text = ""
     highlighted_html = ""
-    type_color_map = {}
-    all_labels = set()
+    all_labels: set[str] = set()
+    model_names: list[str] = []
+    entity_columns: dict[str, list[tuple[str, str]]] = {}
 
     configs = load_configs()
 
@@ -48,19 +49,21 @@ def index():
         extra_args_str = request.form.get("extra_args", "")
         extra_args = process_extra_args(extra_args_str)
 
+        # Run (cached) request + highlight
         ner_result = send_ner_request(url, raw_text, extra_args)
         highlighted_html = highlight_text(raw_text, ner_result)
         all_labels.update(ner_result.values())
 
+        # Save last UI state for this session so GET can restore
         sid = _get_sid()
         with _LAST_UI_LOCK:
             _LAST_UI_STATE[sid] = {"url": url, "text": raw_text, "extra_args": extra_args_str}
 
-        comparison_columns, comparison_table, compare_labels = collect_cached_comparisons(configs, raw_text, extra_args)
+        # Build comparison columns (from cache only)
+        model_names, entity_columns, compare_labels = build_entity_columns(configs, raw_text, extra_args)
         all_labels.update(compare_labels)
 
     else:  # GET
-        comparison_columns, comparison_table, compare_labels = ([], {"models": [], "rows": []}, set())
         sid = session.get("sid")
         if sid:
             with _LAST_UI_LOCK:
@@ -70,23 +73,23 @@ def index():
                 raw_text = state.get("text", "")
                 extra_args = process_extra_args(state.get("extra_args", ""))
 
+                # Restore highlighted view from cache (no network)
                 cached = get_cached_ner_result(url, raw_text, extra_args) or {}
                 highlighted_html = highlight_text(raw_text, cached)
                 all_labels.update(cached.values())
 
-                comparison_columns, comparison_table, compare_labels = collect_cached_comparisons(configs, raw_text, extra_args)
+                # Build comparison columns (from cache only)
+                model_names, entity_columns, compare_labels = build_entity_columns(configs, raw_text, extra_args)
                 all_labels.update(compare_labels)
-
-    type_color_map = {label: get_color_by_type(label) for label in all_labels}
 
     return render_template(
         "index.html",
         raw_text=raw_text,
         highlighted_text=Markup(highlighted_html),
-        type_colors=type_color_map,
+        type_colors={label: get_color_by_type(label) for label in all_labels},
         configs=configs,
-        comparison_columns=comparison_columns,
-        comparison_table=comparison_table,
+        model_names=model_names,
+        entity_columns=entity_columns,
     )
 
 
