@@ -12,6 +12,22 @@ _MODEL_CACHES: dict[str, OrderedDict[str, dict]] = {}
 _MODEL_LOCKS: dict[str, RLock] = {}
 _TOP_LOCK = RLock()
 _MODEL_TEXT_CACHES: dict[str, dict[str, dict]] = {}  # model_url -> { text: result }
+_MODEL_TEXT_TIMINGS: dict[str, dict[str, float]] = {}  # model_url -> { text: seconds }
+
+
+def _get_timing_map(model_key: str) -> dict[str, float]:
+    with _TOP_LOCK:
+        if model_key not in _MODEL_TEXT_TIMINGS:
+            _MODEL_TEXT_TIMINGS[model_key] = {}
+        return _MODEL_TEXT_TIMINGS[model_key]
+
+
+def get_timing_by_text(model_url: str, text: str) -> float | None:
+    return _get_timing_map(model_url).get(text)
+
+
+def set_timing_by_text(model_url: str, text: str, seconds: float) -> None:
+    _get_timing_map(model_url)[text] = seconds
 
 
 def _get_text_cache(model_key: str) -> dict[str, dict]:
@@ -71,7 +87,7 @@ def get_cached_ner_result(model_url: str, text: str, extra_args: dict[str, Any])
 
 def set_cached_ner_result(model_url: str, text: str, extra_args: dict[str, Any], value: dict) -> None:
     _cache_set(model_url, _make_payload_key(text, extra_args), value)
-    set_cached_by_text(model_url, text, value)
+    set_cached_by_text(model_url, text, value)  # keep "latest for text"
 
 
 def sync_model_caches(configs: list[dict]):
@@ -83,11 +99,14 @@ def sync_model_caches(configs: list[dict]):
                 _MODEL_LOCKS[u] = RLock()
             if u not in _MODEL_TEXT_CACHES:
                 _MODEL_TEXT_CACHES[u] = {}
+            if u not in _MODEL_TEXT_TIMINGS:
+                _MODEL_TEXT_TIMINGS[u] = {}
         for u in list(_MODEL_CACHES.keys()):
             if u not in urls:
                 _MODEL_CACHES.pop(u, None)
                 _MODEL_LOCKS.pop(u, None)
                 _MODEL_TEXT_CACHES.pop(u, None)
+                _MODEL_TEXT_TIMINGS.pop(u, None)
 
 
 # (Optional) dev helpers

@@ -2,15 +2,16 @@ from __future__ import annotations
 from typing import Any
 import json
 import requests
-from .cache import get_cached_ner_result, set_cached_ner_result
+import time
+from .cache import get_cached_ner_result, set_cached_ner_result, set_timing_by_text
 
 
 def send_ner_request(model_url: str, text: str, extra_args: dict[str, Any]) -> dict:
-    # cache lookup first
     cached = get_cached_ner_result(model_url, text, extra_args)
     if cached is not None:
         return cached
 
+    start = time.perf_counter()
     try:
         response = requests.post(
             model_url,
@@ -35,5 +36,8 @@ def send_ner_request(model_url: str, text: str, extra_args: dict[str, Any]) -> d
 
     result = response.json()
     if isinstance(result, dict) and result:
+        elapsed = time.perf_counter() - start
         set_cached_ner_result(model_url, text, extra_args, result)
+        set_timing_by_text(model_url, text, elapsed)
+
     return result

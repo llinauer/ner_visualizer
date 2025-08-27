@@ -10,6 +10,12 @@ from ner_visualizer.ner_utils import process_extra_args, highlight_text, get_col
 from ner_visualizer.services import send_ner_request
 from ner_visualizer.cache import sync_model_caches, get_cached_ner_result
 from ner_visualizer.compare import build_entity_columns
+from ner_visualizer.cache import get_cached_by_text, get_timing_by_text
+from flask import send_file, Response
+import io
+import csv
+import datetime as dt
+
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("FLASK_SECRET_KEY", "dev-secret-change-me")
@@ -38,7 +44,7 @@ def index():
     raw_text = ""
     highlighted_html = ""
     all_labels: set[str] = set()
-    model_names: list[str] = []
+    model_headers: list[str] = []
     entity_columns: dict[str, list[tuple[str, str]]] = {}
 
     configs = load_configs()
@@ -60,7 +66,7 @@ def index():
             _LAST_UI_STATE[sid] = {"url": url, "text": raw_text, "extra_args": extra_args_str}
 
         # Build comparison columns (from cache only)
-        model_names, entity_columns = build_entity_columns(configs, raw_text)
+        model_headers, entity_columns = build_entity_columns(configs, raw_text)
 
     else:  # GET
         sid = session.get("sid")
@@ -78,7 +84,7 @@ def index():
                 all_labels.update(cached.values())
 
                 # Build comparison columns (from cache only)
-                model_names, entity_columns = build_entity_columns(configs, raw_text)
+                model_headers, entity_columns = build_entity_columns(configs, raw_text)
 
     return render_template(
         "index.html",
@@ -86,7 +92,7 @@ def index():
         highlighted_text=Markup(highlighted_html),
         type_colors={label: get_color_by_type(label) for label in all_labels},
         configs=configs,
-        model_names=model_names,
+        model_headers=model_headers,
         entity_columns=entity_columns,
     )
 
@@ -108,6 +114,109 @@ def save_config_form():
 def config():
     configs = load_configs()
     return render_template("config.html", configs=configs, enumerate=enumerate)
+
+
+def _fmt_secs_csv(secs: float | None) -> str:
+    """One decimal, comma as decimal separator (e.g., 40,3 s). Empty if None."""
+    if secs is None:
+        return ""
+    return f"{secs:.1f}".replace(".", ",") + " s"
+
+
+def _build_wide_table_for_text(configs: list[dict], text: str):
+    """
+    Returns:
+      headers: list[str]  (model name with timing, e.g., "Flair (40,3 s)")
+      names:   list[str]  (plain model names from config, for lookups)
+      rows:    list[list[str]]  (each cell "entity — label" or "")
+    """
+    # Column order = config order
+    names = [c.get("button_name", c.get("url", "Model")) for c in configs]
+
+    # Build headers with timing (if present)
+    headers = []
+    columns = []  # list of lists of strings
+    max_len = 0
+
+    for c in configs:
+        url = c.get("url", "")
+        name = c.get("button_name", url or "Model")
+
+        secs = get_timing_by_text(url, text) if url else None
+        timing = _fmt_secs_csv(secs)
+        header = f"{name} ({timing})" if timing else name
+        headers.append(header)
+
+        # Pull cached result for this text (ignores extra_args)
+        cached = get_cached_by_text(url, text) if url else None
+        items = []
+        if cached:
+            # cached is {entity: label}
+            for ent, label in sorted(cached.items(), key=lambda kv: kv[0].lower()):
+                items.append(f"{ent} — {label}")
+        columns.append(items)
+        max_len = max(max_len, len(items))
+
+    # Build wide rows (pad with empty strings)
+    rows = []
+    for i in range(max_len):
+        row = []
+        for col in columns:
+            row.append(col[i] if i < len(col) else "")
+        rows.append(row)
+
+    return headers, names, rows
+
+
+@app.route("/export/comparison.json", methods=["GET"])
+def export_comparison_json():
+    # use the last text from the session (as you already do elsewhere)
+    sid = session.get("sid")
+    if not sid or sid not in _LAST_UI_STATE:
+        return jsonify({"error": "No last text available to export."}), 400
+
+    text = _LAST_UI_STATE[sid].get("text", "")
+    if not text:
+        return jsonify({"error": "No last text available to export."}), 400
+
+    configs = load_configs()
+    headers, names, rows = _build_wide_table_for_text(configs, text)
+
+    payload = {
+        "text": text,
+        "generated_at": dt.datetime.utcnow().isoformat() + "Z",
+        "columns": headers,  # model names with timing string
+        "rows": rows,  # rows of "entity — label" strings
+    }
+    return jsonify(payload)
+
+
+@app.route("/export/comparison.csv", methods=["GET"])
+def export_comparison_csv():
+    sid = session.get("sid")
+    if not sid or sid not in _LAST_UI_STATE:
+        return Response("No last text available to export.", status=400)
+
+    text = _LAST_UI_STATE[sid].get("text", "")
+    if not text:
+        return Response("No last text available to export.", status=400)
+
+    configs = load_configs()
+    headers, names, rows = _build_wide_table_for_text(configs, text)
+
+    sio = io.StringIO(newline="")
+    writer = csv.writer(sio)
+    writer.writerow(headers)
+    writer.writerows(rows)
+
+    mem = io.BytesIO(sio.getvalue().encode("utf-8"))
+    mem.seek(0)
+    return send_file(
+        mem,
+        mimetype="text/csv",
+        as_attachment=True,
+        download_name="comparison.csv",
+    )
 
 
 if __name__ == "__main__":
