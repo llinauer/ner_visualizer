@@ -60,8 +60,7 @@ def index():
             _LAST_UI_STATE[sid] = {"url": url, "text": raw_text, "extra_args": extra_args_str}
 
         # Build comparison columns (from cache only)
-        model_names, entity_columns, compare_labels = build_entity_columns(configs, raw_text, extra_args)
-        all_labels.update(compare_labels)
+        model_names, entity_columns = build_entity_columns(configs, raw_text)
 
     else:  # GET
         sid = session.get("sid")
@@ -79,8 +78,7 @@ def index():
                 all_labels.update(cached.values())
 
                 # Build comparison columns (from cache only)
-                model_names, entity_columns, compare_labels = build_entity_columns(configs, raw_text, extra_args)
-                all_labels.update(compare_labels)
+                model_names, entity_columns = build_entity_columns(configs, raw_text)
 
     return render_template(
         "index.html",

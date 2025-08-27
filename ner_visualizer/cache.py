@@ -11,6 +11,22 @@ CACHE_MAXSIZE_PER_MODEL = 256
 _MODEL_CACHES: dict[str, OrderedDict[str, dict]] = {}
 _MODEL_LOCKS: dict[str, RLock] = {}
 _TOP_LOCK = RLock()
+_MODEL_TEXT_CACHES: dict[str, dict[str, dict]] = {}  # model_url -> { text: result }
+
+
+def _get_text_cache(model_key: str) -> dict[str, dict]:
+    with _TOP_LOCK:
+        if model_key not in _MODEL_TEXT_CACHES:
+            _MODEL_TEXT_CACHES[model_key] = {}
+        return _MODEL_TEXT_CACHES[model_key]
+
+
+def get_cached_by_text(model_url: str, text: str) -> dict | None:
+    return _get_text_cache(model_url).get(text)
+
+
+def set_cached_by_text(model_url: str, text: str, value: dict) -> None:
+    _get_text_cache(model_url)[text] = value
 
 
 def _canonicalize_extra_args(extra_args: dict[str, Any]) -> str:
@@ -55,20 +71,23 @@ def get_cached_ner_result(model_url: str, text: str, extra_args: dict[str, Any])
 
 def set_cached_ner_result(model_url: str, text: str, extra_args: dict[str, Any], value: dict) -> None:
     _cache_set(model_url, _make_payload_key(text, extra_args), value)
+    set_cached_by_text(model_url, text, value)
 
 
 def sync_model_caches(configs: list[dict]):
-    """Create caches for URLs in config; remove caches for URLs no longer present."""
     urls = {c.get("url", "") for c in configs if c.get("url")}
     with _TOP_LOCK:
         for u in urls:
             if u not in _MODEL_CACHES:
                 _MODEL_CACHES[u] = OrderedDict()
                 _MODEL_LOCKS[u] = RLock()
+            if u not in _MODEL_TEXT_CACHES:
+                _MODEL_TEXT_CACHES[u] = {}
         for u in list(_MODEL_CACHES.keys()):
             if u not in urls:
                 _MODEL_CACHES.pop(u, None)
                 _MODEL_LOCKS.pop(u, None)
+                _MODEL_TEXT_CACHES.pop(u, None)
 
 
 # (Optional) dev helpers
