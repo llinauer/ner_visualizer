@@ -6,7 +6,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+<body class="bg-gray-100 flex justify-center items-start min-h-screen">
 
   <!-- Config Button  -->
   <div class="absolute top-4 left-4 z-20">
@@ -15,145 +15,107 @@
     </a>
   </div>
 
-  <!-- Form for entering text and submitting to NER -->
+    <!-- Form for entering text and submitting to NER -->
   <div class="bg-white shadow-md rounded-lg p-8 max-w-2xl w-full">
-    <h1 class="text-3xl font-bold mb-6 text-center">NER Visualizer</h1>
+    <form id="config-form" action="/" method="POST">
+      <div class="mb-4">
+        <textarea id="user-text" name="text" class="w-full p-2 border border-gray-300 rounded" rows="4" placeholder="Enter text here">{{ raw_text }}</textarea>
+      </div>
 
-      <form id="config-form" action="/" method="POST">
-        <div class="mb-4">
-          <textarea id="user-text" name="text" class="w-full p-2 border border-gray-300 rounded" rows="4" placeholder="Enter text here">{{ raw_text }}</textarea>
+      <!-- Hidden inputs that get populated based on which button is clicked -->
+      <input type="hidden" id="hidden-url" name="url" value="">
+      <input type="hidden" id="hidden-extra" name="extra_args" value="">
+
+      <!-- Buttons from configs -->
+      <div class="mb-4">
+        <h2 class="text-xl font-semibold">Run NER</h2>
+        <div id="config-buttons" class="mt-4 flex flex-wrap gap-4">
+          {% for button in configs %}
+            <button
+              type="button"
+              class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded"
+              data-url="{{ button['url'] }}"
+              data-extra='{{ button.get("extra_args", "") | tojson }}'
+              onclick="submitWithConfig(this)"
+            >
+              {{ button['button_name'] }}
+            </button>
+          {% endfor %}
         </div>
+      </div>
+    </form>
 
-        <!-- Hidden inputs that get populated based on which button is clicked -->
-        <input type="hidden" id="hidden-url" name="url" value="">
-        <input type="hidden" id="hidden-extra" name="extra_args" value="">
+    <!-- Highlighted NER text -->
+    {% if highlighted_text %}
+      <div class="mt-6 p-4 border border-gray-300 rounded bg-gray-50 shadow-inner">
+        <h2 class="text-xl font-semibold">NER result</h2>
+        <div id="highlighted-text" class="mt-4" style="white-space: pre-wrap;">{{ highlighted_text | safe }}</div>
+      </div>
+    {% endif %}
 
-        <!-- Buttons from configs -->
-        <div class="mb-4">
-          <h2 class="text-xl font-semibold">Run NER</h2>
-          <div id="config-buttons" class="mt-4 flex flex-wrap gap-4">
-            {% for button in configs %}
-              <button
-                type="button"
-                class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded"
-                data-url="{{ button['url'] }}"
-                data-extra='{{ button.get("extra_args", "") | tojson }}'
-                onclick="submitWithConfig(this)"
-              >
-                {{ button['button_name'] }}
-              </button>
-            {% endfor %}
-          </div>
+    <!-- Legend (fixed on the right) -->
+    {% if type_colors %}
+      <div class="legend-container">
+        <h2 class="text-xl font-semibold mb-4">Entities</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {% for type_name, color in type_colors.items() %}
+            <div class="legend-item">
+              <div style="background-color: {{ color }};"></div>
+              <span>{{ type_name }}</span>
+            </div>
+          {% endfor %}
         </div>
-      </form>
+      </div>
+    {% endif %}
 
-  <!-- Highlighted NER text -->
-  {% if highlighted_text %}
-  <div class="mt-6 p-4 border border-gray-300 rounded bg-gray-50 shadow-inner">
-    <h2 class="text-xl font-semibold">NER result</h2>
-    <div id="highlighted-text" class="mt-4" style="white-space: pre-wrap;">{{ highlighted_text | safe }}</div>
-  </div>
-  {% endif %}
 
-  <!-- Legend -->
-  {% if type_colors %}
-  <div class="legend-container">
-    <h2 class="text-xl font-semibold mb-4">Entities</h2>
-    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-      {% for type_name, color in type_colors.items() %}
-        <div class="legend-item">
-          <div style="background-color: {{ color }};"></div>
-          <span>{{ type_name }}</span>
-        </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
-</div>
+    <!-- NEW: Comparison table lives AFTER highlight + legend -->
+    {% if model_names %}
+      <div class="mt-16">  <!-- big spacer to “move it down” -->
+        <h2 class="text-2xl font-bold mb-3">Result Comparison</h2>
 
-{% if comparison_columns %}
-  <div class="mt-10">
-    <h2 class="text-2xl font-bold mb-3">Cached comparisons</h2>
-    <p class="text-sm text-gray-500 mb-4">
-      Showing results already in cache for this text and Extra Args. No new model calls.
-    </p>
-
-    <!-- Per-model columns -->
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {% for col in comparison_columns %}
-        <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
-          <h3 class="font-semibold text-lg mb-2">{{ col.model_name }}</h3>
-
-          <!-- Label chips with counts -->
-          <div class="flex flex-wrap gap-2 mb-3">
-            {% for label, count in col.counts.items() %}
-              <span class="px-2 py-1 rounded text-xs" style="background-color: {{ type_colors.get(label, '#eee') }}">
-                {{ label }} ({{ count }})
-              </span>
-            {% endfor %}
-          </div>
-
-          <!-- Entity list -->
-          <div class="max-h-56 overflow-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="text-left">
-                  <th class="py-1 pr-2">Entity</th>
-                  <th class="py-1">Label</th>
-                </tr>
-              </thead>
-              <tbody>
-                 {% for item in col['items'] %}
-                  <tr class="border-t border-gray-100">
-                    <td class="py-1 pr-2">{{ item[0] }}</td>
-                    <td class="py-1">{{ item[1] }}</td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      {% endfor %}
-    </div>
-
-    <!-- Unified comparison table -->
-    {% if comparison_table.models|length > 1 %}
-      <div class="mt-8 bg-white border border-gray-200 rounded-lg shadow-sm p-4 overflow-auto">
-        <h3 class="font-semibold text-lg mb-3">Entity comparison table</h3>
-        <table class="min-w-full text-sm">
-          <thead>
-            <tr class="text-left">
-              <th class="py-1 pr-4">Entity</th>
-              {% for m in comparison_table.models %}
-                <th class="py-1 pr-4">{{ m }}</th>
-              {% endfor %}
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in comparison_table.rows %}
-              <tr class="border-t border-gray-100">
-                <td class="py-1 pr-4 font-medium">{{ row.entity }}</td>
-                {% for m in comparison_table.models %}
-                  {% set label = row.by_model.get(m, '') %}
-                  <td class="py-1 pr-4">
-                    {% if label %}
-                      <span class="px-2 py-0.5 rounded" style="background-color: {{ type_colors.get(label, '#eee') }}">
-                        {{ label }}
-                      </span>
-                    {% else %}
-                      <span class="text-gray-400">—</span>
-                    {% endif %}
-                  </td>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+            <thead class="bg-gray-50">
+              <tr>
+                {% for m in model_names %}
+                  <th class="py-2 px-3 text-left font-semibold border-b border-gray-200">{{ m }}</th>
                 {% endfor %}
               </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {% set ns = namespace(maxlen=0) %}
+              {% for m in model_names %}
+                {% set l = (entity_columns.get(m) or [])|length %}
+                {% if l > ns.maxlen %}{% set ns.maxlen = l %}{% endif %}
+              {% endfor %}
+
+              {% for i in range(ns.maxlen) %}
+                <tr class="border-b border-gray-100">
+                  {% for m in model_names %}
+                    {% set items = entity_columns.get(m) or [] %}
+                    <td class="py-1.5 px-3 align-top">
+                      {% if i < items|length %}
+                        {% set ent = items[i][0] %}
+                        {% set label = items[i][1] %}
+                        <span class="ner-entity px-1 rounded"
+                              aria-label="{{ label }}"
+                              style="background-color: {{ type_colors.get(label, '#eef2ff') }};">
+                          {{ ent }}
+                        </span>
+                      {% else %}
+                        <span class="text-gray-300">—</span>
+                      {% endif %}
+                    </td>
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
     {% endif %}
   </div>
-{% endif %}
-
 
 
 <script>
